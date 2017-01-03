@@ -19,4 +19,7 @@
 #define MENU_HEIGHT		6
 #define MENU_WIDTH		20
 
+// General
+#define WLEN			5.0
+
 #endif

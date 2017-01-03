@@ -2,6 +2,7 @@
 #define __TYPES_H
 
 #include <stdio.h>
+#include <time.h>
 #include "defs.h"
 
 struct config_s {
@@ -25,7 +26,8 @@ struct word_s {
 struct result_s {
 	struct word_s *word;		// Source word
 	char input[DICT_WORDLEN + 1];	// Input word
-	double t;			// Input time
+	struct timespec stime;		// Input start time
+	struct timespec etime;		// Input end time
 };
 
 enum state {

@@ -1,15 +1,16 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <ncurses.h>
 #include "defs.h"
 #include "dict.h"
+#include "misc.h"
+#include "stats.h"
 #include "typer.h"
 
 static WINDOW *source_win, *input_win;
-static struct word_s *words;
-static struct result_s *results;
+struct word_s *words;
+struct result_s *results;
 
 static int typer_init(struct config_s *config)
 {
@@ -114,7 +115,14 @@ int typer(struct config_s *config)
 		sx += word->len + 1;	
 	}
 
+	// Delete windows
 	typer_deinit(); 
+
+	// Show results
+	stats_show_single(results, config->wc);
+
+	// Free allocations
+	typer_free();
 
 	return STATE_MENU;
 }
@@ -136,15 +144,18 @@ static int typer_printline(struct word_s *word, int y, int ll)
 	return count;
 }
 
-static void typer_deinit(void)
+static void typer_free(void)
 {
 	// Free allocations
 	if(words)
 		dict_free(words);
 
-	if(results)	
+	if(results)
 		free(results);
+}
 
+static void typer_deinit(void)
+{
 	// Delete windows
 	delwin(source_win);
 	delwin(input_win);
@@ -156,9 +167,6 @@ static int typer_io(struct word_s *source, struct result_s *result, int x, int y
 {
 	// Input buffer index, input character
 	int index = 0, c = 0;
-
-	// Input start time
-	struct timespec stime;	
 
 	// Timer run flag
 	bool trun = FALSE;
@@ -183,7 +191,7 @@ static int typer_io(struct word_s *source, struct result_s *result, int x, int y
 
 		// Start time not set yet?
 		if(!trun) {
-			clock_gettime(CLOCK_MONOTONIC, &stime);
+			clock_gettime(CLOCK_MONOTONIC, &result->stime);
 			trun = TRUE;
 		}
 	
@@ -210,7 +218,10 @@ static int typer_io(struct word_s *source, struct result_s *result, int x, int y
 				result->input[index] = '\0';
 
 				// Get input end time
-				result->t = typer_get_time(&stime);
+				clock_gettime(CLOCK_MONOTONIC, &result->etime);
+
+				// Result pointer to source word
+				result->word = source;
 
 				return 0;
 			}
@@ -227,17 +238,6 @@ static int typer_io(struct word_s *source, struct result_s *result, int x, int y
 
 	// Should not get here
 	return 0;
-}
-
-static double typer_get_time(struct timespec *stime) 
-{
-	struct timespec etime;
-	clock_gettime(CLOCK_MONOTONIC, &etime);
-
-	double start = (stime->tv_sec * 1000) + (stime->tv_nsec / 1000000.0);	
-	double end = (etime.tv_sec * 1000) + (etime.tv_nsec / 1000000.0);
-	
-	return (double)((end - start) / 1000.0);
 }
 
 static int typer_ctrl(int c)
